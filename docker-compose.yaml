@@ -1,0 +1,107 @@
+version: "3.5"
+
+
+services:
+
+  redis:
+    image: redis:6-alpine
+    restart: "unless-stopped"
+    command: redis-server --requirepass supersecretpassword
+    environment:
+      REDIS_REPLICATION_MODE: master
+    volumes:
+      - redis_data:/var/lib/redis
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 10s
+      retries: 5
+    networks:
+      redis_net:
+
+  db:
+    image: postgres:13-alpine
+    restart: "unless-stopped"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker-compose/postgres-init.sql:/docker-entrypoint-initdb.d/init-database.sql
+    networks:
+      db_net:
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  nano_pippin:
+    image: pskillen/pippin:latest
+    restart: "on-failure"
+    build:
+      context: .
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DB: 0
+      REDIS_PW: supersecretpassword
+
+      POSTGRES_HOST: db
+      POSTGRES_DB: nano
+      POSTGRES_USER: nano
+      POSTGRES_PASSWORD: nano
+    volumes:
+      - ./docker-compose/nano-pippin-config.yaml:/root/PippinData/config.yaml
+    ports:
+      - "127.0.0.1:11338:11338/tcp"  # RPC port
+    depends_on:
+      redis:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+    networks:
+      redis_net:
+      db_net:
+
+  banano_pippin:
+    image: pskillen/pippin:latest
+    build:
+      context: .
+    restart: "on-failure"
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DB: 1
+      REDIS_PW: supersecretpassword
+
+      POSTGRES_HOST: db
+      POSTGRES_DB: banano
+      POSTGRES_USER: banano
+      POSTGRES_PASSWORD: banano
+    volumes:
+      - ./docker-compose/banano-pippin-config.yaml:/root/PippinData/config.yaml
+    ports:
+      - "127.0.0.1:11348:11338/tcp"  # RPC port
+    depends_on:
+      redis:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+    networks:
+      redis_net:
+      db_net:
+
+
+networks:
+  redis_net:
+    ipam:
+      driver: default
+  db_net:
+    ipam:
+      driver: default
+
+
+volumes:
+  postgres_data:
+  redis_data:
