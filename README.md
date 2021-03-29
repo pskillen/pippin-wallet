@@ -29,8 +29,6 @@ services:
 
     nano_pippin:
         image: pskillen/pippin:latest
-        build:
-            context: .
         environment:
             REDIS_HOST: redis
             REDIS_PORT: 6379

@@ -39,8 +39,6 @@ services:
   nano_pippin:
     image: pskillen/pippin:latest
     restart: "on-failure"
-    build:
-      context: .
     environment:
       REDIS_HOST: redis
       REDIS_PORT: 6379
@@ -66,8 +64,6 @@ services:
 
   banano_pippin:
     image: pskillen/pippin:latest
-    build:
-      context: .
     restart: "on-failure"
     environment:
       REDIS_HOST: redis
